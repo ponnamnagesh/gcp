@@ -26,6 +26,9 @@
   }
 }
 
+                              
+                                  "${get(element, "location", "US")}-${element.purpose}-${element.classification}" => element
+
 
 
 
