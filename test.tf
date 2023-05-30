@@ -18,6 +18,13 @@
                       value = number(regex("[0-9]+$", element(split("/", module.project_ref.data.alerting.notification_channel), 3)))
                         
                           value = can(number(regex("[0-9]+$", element(split("/", module.project_ref.data.alerting.notification_channel), 3))))
+                            
+                            locals {
+  buckets_data = {
+    for element in var.data_list :
+    "${element.location}-${element.purpose}-${element.classification}" => element
+  }
+}
 
 
 
