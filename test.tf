@@ -36,7 +36,10 @@
                                   "${try(element.location, "US")}-${element.purpose}-${element.classification}" => element
 
 
-
+${coalesce(element.location, "US")}-${element.purpose}-${element.classification}" => {
+      purpose        = element.purpose
+      location       = coalesce(element.location, "US")
+      classification = element.classification
 
 
 
