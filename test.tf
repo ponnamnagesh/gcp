@@ -8,6 +8,9 @@
   value = substr(module.project_ref.data.alerting.notification_channel, index(module.project_ref.data.alerting.notification_channel, "/") + 1)
     
       value = element(split("/", module.project_ref.data.alerting.notification_channel), 1)
+        
+          value = regex("([0-9]+)$", module.project_ref.data.alerting.notification_channel)
+
 
 
 
