@@ -36,10 +36,17 @@
                                   "${try(element.location, "US")}-${element.purpose}-${element.classification}" => element
 
 
-${coalesce(element.location, "US")}-${element.purpose}-${element.classification}" => {
+locals {
+  buckets_data = {
+    for element in var.data_list :
+    "${coalesce(element.location, "US")}-${element.purpose}-${element.classification}" => {
       purpose        = element.purpose
       location       = coalesce(element.location, "US")
       classification = element.classification
+    }
+  }
+}
+
 
 
 
