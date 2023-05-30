@@ -12,6 +12,9 @@
           value = regex("([0-9]+)$", module.project_ref.data.alerting.notification_channel)
             
               value = element(split("/", module.project_ref.data.alerting.notification_channel)[length(split("/", module.project_ref.data.alerting.notification_channel)) - 1], 1)
+                
+                  value = regex("[0-9]+$", element(split("/", module.project_ref.data.alerting.notification_channel), 3))
+
 
 
 
