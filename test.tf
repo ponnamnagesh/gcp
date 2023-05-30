@@ -47,6 +47,16 @@ locals {
   }
 }
 
+  locals {
+  default_location = {
+    location = "US"
+  }
+
+  buckets_data = {
+    for element in var.data_list :
+    "${element.purpose}-${element.classification}" => merge(element, local.default_location)
+  }
+}
 
 
 
