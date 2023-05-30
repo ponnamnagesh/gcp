@@ -32,6 +32,9 @@
                                   "${element.location != null ? element.location : "US"}-${element.purpose}-${element.classification}" => element
                               
                                   "${coalesce(element.location, "US")}-${element.purpose}-${element.classification}" => element
+                              
+                                  "${try(element.location, "US")}-${element.purpose}-${element.classification}" => element
+
 
 
 
