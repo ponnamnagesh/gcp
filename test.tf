@@ -28,6 +28,9 @@
 
                               
                                   "${get(element, "location", "US")}-${element.purpose}-${element.classification}" => element
+                              
+                                  "${element.location != null ? element.location : "US"}-${element.purpose}-${element.classification}" => element
+
 
 
 
