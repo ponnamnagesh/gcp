@@ -16,6 +16,9 @@
                   value = regex("[0-9]+$", element(split("/", module.project_ref.data.alerting.notification_channel), 3))
                     
                       value = number(regex("[0-9]+$", element(split("/", module.project_ref.data.alerting.notification_channel), 3)))
+                        
+                          value = can(number(regex("[0-9]+$", element(split("/", module.project_ref.data.alerting.notification_channel), 3))))
+
 
 
 
