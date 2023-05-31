@@ -58,6 +58,11 @@ locals {
   }
 }
 
+    for_each = {
+  for k, v in local.buckets_data :
+  k => v
+  if fileexists(v["file_path"])
+}
 
 
 
