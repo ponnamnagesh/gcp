@@ -63,6 +63,14 @@ locals {
   k => v
   if fileexists(v["file_path"])
 }
+    
+    
+    {
+      location       = v.location
+      purpose        = v.purpose
+      classification = v.classification
+      file_path      = v.file_path
+    }
 
 
 
