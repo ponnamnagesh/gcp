@@ -71,6 +71,33 @@ locals {
       classification = v.classification
       file_path      = v.file_path
     }
+    
+    
+    variable "bucket_purposes" {
+  type = map(string)
+  default = {
+    bucket1 = "purpose1"
+    bucket2 = "purpose2"
+    bucket3 = "purpose3"
+    bucket4 = "purpose4"
+    bucket5 = "purpose5"
+    bucket6 = "purpose6"
+    bucket7 = "purpose7"
+    bucket8 = "purpose8"
+    bucket9 = "purpose9"
+    bucket10 = "purpose10"
+  }
+}
+
+module "storage_buckets" {
+  source = "./modules/storage_buckets"
+
+  for_each = var.bucket_purposes
+
+  bucket_name    = each.key
+  bucket_purpose = each.value
+}
+
 
 
 
