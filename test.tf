@@ -98,6 +98,14 @@ module "storage_buckets" {
   bucket_purpose = each.value
 }
 
+Generally, we do not have an immediate solution to create Apache Airflow in dual regions.
+Here, we can create environments in two regions.
+Then, we have an Apache Airflow server in two regions.
+In both regions, we should create DAGs, tasks, etc.
+We should ensure that the Apache Airflow instance is running in only one region; in the other region, we should manually stop it.
+Then, with the help of a cloud function, we start the second Airflow instance when the first Airflow instance is stopped or terminated.
+To trigger the cloud function when the first Airflow instance is stopped, we should use some event-based trigger mechanism.
+If I want to store anything from the first Airflow instance, we should store it in a GCS bucket.
 
 
 
