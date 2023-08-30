@@ -120,6 +120,25 @@ Deploy the Airflow instances in each environment using Terraform. Ensure that th
 
 Test the replication by creating and executing DAGs in one environment and verifying that the changes are reflected in the other environment.
 
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+from datetime import datetime
+
+default_args = {
+    'owner': 'airflow',
+    'start_date': datetime(2023, 1, 1),
+}
+
+def list_installed_packages():
+    import subprocess
+    result = subprocess.run(['pip', 'list'], capture_output=True, text=True)
+    return result.stdout
+
+with DAG('list_packages_dag', schedule_interval=None, default_args=default_args) as dag:
+    list_packages_task = PythonOperator(
+        task_id='list_packages',
+        python_callable=list_installed_packages
+    )
 
 
 
