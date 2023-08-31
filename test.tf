@@ -142,6 +142,31 @@ with DAG('list_packages_dag', schedule_interval=None, default_args=default_args)
 
 
 
+from airflow import DAG
+from airflow.operators.python_operator import PythonOperator
+from datetime import datetime
+import subprocess
+
+default_args = {
+    'owner': 'airflow',
+    'start_date': datetime(2023, 1, 1),
+}
+
+def install_snowflake_connector():
+    try:
+        # Use pip to install Snowflake Connector version 3.1.0
+        result = subprocess.run(['pip', 'install', 'snowflake-connector-python==3.1.0'], capture_output=True, text=True)
+        return result.stdout
+    except Exception as e:
+        return str(e)
+
+with DAG('install_snowflake_connector_dag', schedule_interval=None, default_args=default_args) as dag:
+    install_task = PythonOperator(
+        task_id='install_snowflake_connector',
+        python_callable=install_snowflake_connector
+    )
+
+
 
 
 
