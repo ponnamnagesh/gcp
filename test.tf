@@ -165,7 +165,30 @@ with DAG('install_snowflake_connector_dag', schedule_interval=None, default_args
         task_id='install_snowflake_connector',
         python_callable=install_snowflake_connector
     )
+!/bin/bash
 
+# Set your GCP service account key (authentication)
+export GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/gcp-service-account-key.json
+
+# Define Bitbucket repository URL and folder path
+BITBUCKET_REPO_URL="https://bitbucket.org/username/repo.git"
+BITBUCKET_FOLDER_PATH="path/to/folder/in/bitbucket"
+BITBUCKET_BRANCH="master"  # Replace with the desired branch/tag/commit
+
+# Define a temporary directory to store the exported tarball
+TEMP_DIR="/tmp"
+
+# Generate a unique tarball file name
+TAR_FILE="$TEMP_DIR/bitbucket_folder_$(date +'%Y%m%d%H%M%S').tar.gz"
+
+# Export the folder from Bitbucket as a tarball using 'git archive'
+git archive --remote="$BITBUCKET_REPO_URL" --format=tar.gz "$BITBUCKET_BRANCH:$BITBUCKET_FOLDER_PATH" > "$TAR_FILE"
+
+# Upload the exported tarball to GCS bucket
+gsutil cp "$TAR_FILE" gs://your-gcs-bucket/
+
+# Clean up the temporary tarball file
+rm "$TAR_FILE"
 
 
 
