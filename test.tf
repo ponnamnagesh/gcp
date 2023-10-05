@@ -190,6 +190,13 @@ gsutil cp "$TAR_FILE" gs://your-gcs-bucket/
 # Clean up the temporary tarball file
 rm "$TAR_FILE"
 
+curl -O https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-install.sh
+
+Invoke-WebRequest -Uri "https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe" -OutFile "$env:USERPROFILE\Downloads\GoogleCloudSDKInstaller.exe"
+
+wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk-install.sh
+
+chmod +x google-cloud-sdk-install.sh
 
 
 
