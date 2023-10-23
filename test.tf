@@ -199,4 +199,21 @@ wget https://dl.google.com/dl/cloudsdk/channels/rapid/downloads/google-cloud-sdk
 chmod +x google-cloud-sdk-install.sh
 
 
+#!/bin/bash
+
+# Path to the bumpversion.cfg file
+BUMPVERSION_FILE="path/to/bumpversion.cfg"
+
+# Extract the release version
+RELEASE_VERSION=$(grep "current_version" "$BUMPVERSION_FILE" | awk -F'=' '{print $2}' | tr -d '[:space:]')
+
+echo "Release Version: $RELEASE_VERSION"
+
+
+echo "##teamcity[setParameter name='env.RELEASE_VERSION' value='$RELEASE_VERSION']"
+
+# Access the release version
+echo "Release Version: $RELEASE_VERSION"
+
+
 
