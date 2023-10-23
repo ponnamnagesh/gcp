@@ -217,3 +217,15 @@ echo "Release Version: $RELEASE_VERSION"
 
 
 
+@echo off
+
+REM Define the path to your bumpversion.cfg file
+set BUMPVERSION_CFG="C:\path\to\bumpversion.cfg"
+
+REM Extract the release version using findstr and for
+for /f "tokens=2 delims==" %%i in ('findstr /C:"current_version" %BUMPVERSION_CFG%') do set RELEASE_VERSION=%%i
+
+REM Print the release version
+echo Latest Release Version: %RELEASE_VERSION%
+
+
