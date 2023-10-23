@@ -228,4 +228,5 @@ for /f "tokens=2 delims==" %%i in ('findstr /C:"current_version" %BUMPVERSION_CF
 REM Print the release version
 echo Latest Release Version: %RELEASE_VERSION%
 
+bamboo_variable "RELEASE_VERSION" "${RELEASE_VERSION}"
 
