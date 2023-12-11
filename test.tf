@@ -230,3 +230,22 @@ echo Latest Release Version: %RELEASE_VERSION%
 
 bamboo_variable "RELEASE_VERSION" "${RELEASE_VERSION}"
 
+flyway.cmd -url=jdbc:your_database_url -user=your_username -password=your_password -schemas=your_schema -locations=filesystem:path_to_sql_scripts migrate
+
+
+flyway.url=jdbc:your_database_url
+flyway.user=your_username
+flyway.password=your_password
+flyway.schemas=your_schema
+flyway.locations=filesystem:path_to_sql_scripts
+
+export FLYWAY_URL=jdbc:your_database_url
+export FLYWAY_USER=your_username
+export FLYWAY_PASSWORD=your_password
+export FLYWAY_SCHEMAS=your_schema
+export FLYWAY_LOCATIONS=filesystem:path_to_sql_scripts
+
+flyway.cmd migrate
+
+flyway.cmd migrate -configFile=flyway.conf
+
