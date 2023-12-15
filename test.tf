@@ -249,3 +249,12 @@ flyway.cmd migrate
 
 flyway.cmd migrate -configFile=flyway.conf
 
+
+flyway migrate \
+  -url=jdbc:your_database_url \
+  -locations=filesystem:/path/to/scripts \
+  -user=your_ssh_username \
+  -keyPath=/path/to/private/key \
+  -password=your_passphrase
+
+
