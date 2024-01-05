@@ -257,4 +257,23 @@ flyway migrate \
   -keyPath=/path/to/private/key \
   -password=your_passphrase
 
+#!/bin/bash
+
+# Update the package index
+apt-get update
+
+# Install Python and pip
+apt-get install -y python3 python3-pip
+
+# Verify the installation
+python3 --version
+pip3 --version
+
+# Install the Snowflake Connector for Python (version 3.2.0)
+pip3 install snowflake-connector-python==3.2.0
+
+# Verify the Snowflake Connector installation
+python3 -c "import snowflake.connector; print(snowflake.connector.__version__)"
+
+
 
