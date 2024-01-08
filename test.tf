@@ -277,3 +277,28 @@ python3 -c "import snowflake.connector; print(snowflake.connector.__version__)"
 
 
 
+
+#!/bin/bash
+
+# Attempt to install the Snowflake Connector for Python using conda
+if command -v conda &> /dev/null; then
+    echo "Conda is available. Using conda to install Snowflake Connector."
+    conda install -y -c conda-forge snowflake-connector-python=3.2.0
+fi
+
+# Attempt to install the Snowflake Connector for Python using pip3
+if command -v pip3 &> /dev/null; then
+    echo "pip3 is available. Using pip3 to install Snowflake Connector."
+    pip3 install snowflake-connector-python==3.2.0
+fi
+
+# Verify the Snowflake Connector installation
+if python3 -c "import snowflake.connector" &> /dev/null; then
+    echo "Snowflake Connector for Python is installed."
+else
+    echo "Snowflake Connector for Python is not installed or encountered an issue during installation."
+fi
+
+
+
+
