@@ -300,5 +300,32 @@ else
 fi
 
 
+import requests
+import json
+
+# Set up authentication
+credentials = json.load(open('credentials.json'))  # Load service account credentials
+headers = {'Authorization': f'Bearer {credentials["access_token"]}'}
+
+# Define API endpoint
+project_id = 'your-project-id'
+location = 'us-central1'
+environment = 'your-composer-environment'
+api_endpoint = f'https://composer.googleapis.com/v1beta1/projects/{project_id}/locations/{location}/environments/{environment}/dags:trigger'
+
+# Construct request body
+dag_name = 'your-dag-name'
+request_body = {'dag_name': dag_name}
+
+# Send API request
+response = requests.post(api_endpoint, headers=headers, json=request_body)
+
+# Handle response
+if response.status_code == 200:
+    print('DAG triggered successfully!')
+    print(response.json())  # Print information about the triggered DAG run
+else:
+    print('Error:', response.status_code, response.text)
+
 
 
