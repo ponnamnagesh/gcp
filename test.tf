@@ -413,3 +413,101 @@ with DAG(
     test_connection_task
 
 
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+import psycopg2
+from google.auth.transport.requests import Request
+from google.oauth2.service_account import Credentials
+
+# Replace with your Cloud SQL details
+DB_CONFIG = {
+    "host": "127.0.0.1",  # Cloud SQL Proxy default localhost
+    "port": 5432,         # Default PostgreSQL port
+    "dbname": "your_database_name",
+    "user": "your_esa_email@your-project.iam.gserviceaccount.com",  # ESA email
+}
+
+# Replace with your ESA key JSON content
+ESA_KEY_CONTENT = """
+{
+    "type": "service_account",
+    "project_id": "your-project-id",
+    "private_key_id": "your-private-key-id",
+    "private_key": "-----BEGIN PRIVATE KEY-----\nYOUR-PRIVATE-KEY-HERE\n-----END PRIVATE KEY-----\n",
+    "client_email": "your-esa-email@your-project.iam.gserviceaccount.com",
+    "client_id": "your-client-id",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/your-esa-email%40your-project.iam.gserviceaccount.com"
+}
+"""
+
+def test_connection_with_file_key():
+    """
+    Function to test connection to Cloud SQL using an ESA key written to a file.
+    """
+    try:
+        # Write the ESA key to a temporary file
+        key_file = "/tmp/esa-key.json"
+        with open(key_file, "w") as f:
+            f.write(ESA_KEY_CONTENT)
+
+        # Authenticate with the ESA key
+        credentials = Credentials.from_service_account_file(key_file)
+        credentials.refresh(Request())
+        iam_token = credentials.token
+
+        # Connect to Cloud SQL using the IAM token as the password
+        conn = psycopg2.connect(
+            host=DB_CONFIG["host"],
+            port=DB_CONFIG["port"],
+            dbname=DB_CONFIG["dbname"],
+            user=DB_CONFIG["user"],
+            password=iam_token,
+            sslmode="verify-ca"
+        )
+        cursor = conn.cursor()
+
+        # Execute a simple query
+        cursor.execute("SELECT NOW();")
+        result = cursor.fetchone()
+
+        print(f"Connection successful. Current time: {result[0]}")
+
+        # Clean up
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Failed to connect to Cloud SQL using ESA key file: {e}")
+        raise
+
+# Default arguments for the DAG
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+}
+
+# Define the DAG
+with DAG(
+    dag_id='test_cloud_sql_connection_with_esa_key_file',
+    default_args=default_args,
+    description='A DAG to test connection to Cloud SQL using an ESA key written to a file',
+    schedule_interval=None,  # Manual trigger
+    start_date=datetime(2023, 1, 1),
+    catchup=False,
+) as dag:
+
+    # PythonOperator to test the connection
+    test_connection_task = PythonOperator(
+        task_id='test_connection_with_file_key',
+        python_callable=test_connection_with_file_key,
+    )
+
+    test_connection_task
+
+
