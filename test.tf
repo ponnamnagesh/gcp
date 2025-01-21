@@ -329,3 +329,87 @@ else:
 
 
 
+from airflow import DAG
+from airflow.operators.python import PythonOperator
+from datetime import datetime
+import psycopg2
+import google.auth
+from google.auth.transport.requests import Request
+
+# Replace these with your Cloud SQL details
+INSTANCE_CONNECTION_NAME = "project-id:region:instance-id"
+DB_CONFIG = {
+    "host": "127.0.0.1",  # Cloud SQL Proxy default localhost
+    "port": 5432,         # Default PostgreSQL port
+    "dbname": "your_database_name",
+    "user": "your_service_account_email"  # IAM-authenticated user
+}
+
+def get_iam_token():
+    """
+    Obtain an IAM token for authenticating to Cloud SQL.
+    """
+    credentials, project = google.auth.default()
+    credentials.refresh(Request())
+    return credentials.token
+
+def test_connection_with_iam():
+    """
+    Test Cloud SQL connection using IAM Authentication.
+    """
+    try:
+        # Obtain an IAM token
+        iam_token = get_iam_token()
+
+        # Connect to the Cloud SQL database
+        conn = psycopg2.connect(
+            host=DB_CONFIG["host"],
+            port=DB_CONFIG["port"],
+            dbname=DB_CONFIG["dbname"],
+            user=DB_CONFIG["user"],
+            password=iam_token,
+            sslmode="verify-ca"
+        )
+        cursor = conn.cursor()
+
+        # Execute a simple query
+        cursor.execute("SELECT NOW();")
+        result = cursor.fetchone()
+
+        print(f"Connection successful. Current time: {result[0]}")
+
+        # Clean up
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        print(f"Failed to connect to Cloud SQL: {e}")
+        raise
+
+# Default arguments for the DAG
+default_args = {
+    'owner': 'airflow',
+    'depends_on_past': False,
+    'email_on_failure': False,
+    'email_on_retry': False,
+    'retries': 1,
+}
+
+# Define the DAG
+with DAG(
+    dag_id='test_cloud_sql_connection_iam',
+    default_args=default_args,
+    description='A DAG to test connection to Cloud SQL using IAM authentication',
+    schedule_interval=None,
+    start_date=datetime(2023, 1, 1),
+    catchup=False,
+) as dag:
+
+    # PythonOperator to test the connection
+    test_connection_task = PythonOperator(
+        task_id='test_connection_with_iam',
+        python_callable=test_connection_with_iam,
+    )
+
+    test_connection_task
+
+
