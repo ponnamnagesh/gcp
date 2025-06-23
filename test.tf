@@ -1,4 +1,8 @@
-  filename = "new_${var.env == "prod" ? local_file.example.filename : var.env == "dev" ? "dev.txt" : var.env == "sbx" ? "sbx.txt" : "exercise.txt"}"
+  filter = "resource.type=\"cloud_run_revision\" AND resource.service_name=\"samda-java-app\" AND metric.type=\"run.googleapis.com/request_count\" AND metric.label.response_code =~ \"4[0-9][0-9]$\""
+
+
+
+filename = "new_${var.env == "prod" ? local_file.example.filename : var.env == "dev" ? "dev.txt" : var.env == "sbx" ? "sbx.txt" : "exercise.txt"}"
 
 
   filename = var.env == "prod" ? local_file.example.filename : var.env == "dev" ? "dev.txt" : var.env == "sbx" ? "sbx.txt" : "exercise.txt"
