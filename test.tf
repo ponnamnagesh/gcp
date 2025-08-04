@@ -1,4 +1,7 @@
-  filter = "resource.type=\"cloud_run_revision\" AND resource.service_name=\"samda-java-app\" AND metric.type=\"run.googleapis.com/request_count\" AND metric.label.response_code =~ \"4[0-9][0-9]$\""
+log_filter = "resource.type=\"global\" AND logName=\"projects/${var.project_id}/logs/monitoring.googleapis.com%2Fincident\" AND jsonPayload.incident.state=\"open\" AND (jsonPayload.incident.condition.name:(\"us-central1\" OR \"us-east4\") OR jsonPayload.incident.condition.displayName:(\"us-central1\" OR \"us-east4\")) AND (jsonPayload.incident.policy_name:\"Cloud Run\" OR jsonPayload.incident.policy_name:\"Cloud Functions\" OR jsonPayload.incident.policy_name:\"Cloud Storage\" OR jsonPayload.incident.policy_name:\"Pub/Sub\")"
+
+
+filter = "resource.type=\"cloud_run_revision\" AND resource.service_name=\"samda-java-app\" AND metric.type=\"run.googleapis.com/request_count\" AND metric.label.response_code =~ \"4[0-9][0-9]$\""
 
 
 
