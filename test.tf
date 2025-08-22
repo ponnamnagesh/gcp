@@ -1,3 +1,13 @@
+    # split by comma, take the first entry, trim spaces
+    FIRST=$(echo "${{ inputs.SERVER_NAME }}" | cut -d',' -f1 | xargs)
+    echo "first=$FIRST" >> $GITHUB_OUTPUT
+
+- name: Safeguard - fetch credential
+  id: sg
+  uses: your-org/safeguard-action@v1
+  with:
+    account-system: ${{ steps.first.outputs.first }}
+
 log_filter = "resource.type=\"global\" AND logName=\"projects/${var.project_id}/logs/monitoring.googleapis.com%2Fincident\" AND jsonPayload.incident.state=\"open\" AND (jsonPayload.incident.condition.name:(\"us-central1\" OR \"us-east4\") OR jsonPayload.incident.condition.displayName:(\"us-central1\" OR \"us-east4\")) AND (jsonPayload.incident.policy_name:\"Cloud Run\" OR jsonPayload.incident.policy_name:\"Cloud Functions\" OR jsonPayload.incident.policy_name:\"Cloud Storage\" OR jsonPayload.incident.policy_name:\"Pub/Sub\")"
 
 
