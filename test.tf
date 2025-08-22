@@ -1,4 +1,13 @@
-    # split by comma, take the first entry, trim spaces
+    steps:
+      - name: Get first server
+        id: first
+        shell: bash
+        run: |
+          FIRST=$(echo "${{ inputs.SERVER_NAME }}" | cut -d',' -f1 | xargs)
+          echo "first=$FIRST" >> $GITHUB_OUTPUT
+
+
+# split by comma, take the first entry, trim spaces
     FIRST=$(echo "${{ inputs.SERVER_NAME }}" | cut -d',' -f1 | xargs)
     echo "first=$FIRST" >> $GITHUB_OUTPUT
 
