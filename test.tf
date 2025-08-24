@@ -1,4 +1,82 @@
-    steps:
+- name: Deploy (prod) to multiple servers
+  if: ${{ inputs.ENV_NAME == 'prod' }}   # run this step only if ENV_NAME == prod
+  shell: bash
+  run: |
+    set -euo pipefail
+    # -e: stop on error
+    # -u: error on unset variables
+    # -o pipefail: fail if any command in a pipeline fails
+
+    # Take SERVER_NAME string from GitHub vars (can be "srv1,srv2" or "srv1 srv2")
+    # First try splitting by commas into an array (SARR).
+    IFS=',' read -ra SARR <<< "${{ vars.SERVER_NAME }}"
+
+    # If there was only 1 element (no commas found), split by spaces instead.
+    if [ ${#SARR[@]} -eq 1 ]; then
+      read -ra SARR <<< "${{ vars.SERVER_NAME }}"
+    fi
+
+    # Build the absolute path to the local source folder inside the GitHub runner.
+    # $GITHUB_WORKSPACE is where the repo was checked out by actions/checkout.
+    SRC_ABS="${GITHUB_WORKSPACE}/${{ vars.PATH_TO_FILES }}"
+
+    # Ensure the source directory actually exists before deploying.
+    test -d "${SRC_ABS}"
+
+    # Track global exit status (0 = all servers OK, 1 = at least one failed).
+    overall=0
+
+    # Loop through each server in the list.
+    for SERVER in "${SARR[@]}"; do
+      # Trim whitespace around the server name (e.g. " web1 " → "web1").
+      SERVER="$(echo "$SERVER" | xargs)"
+      # Skip if empty (e.g. trailing comma produced a blank entry).
+      [ -n "$SERVER" ] || continue
+
+      echo "===== Deploying to $SERVER ====="
+
+      # --- 1) On remote: backup existing dir and prepare a clean target ---
+      sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" ssh -o StrictHostKeyChecking=no root@"$SERVER" "
+        set -euo pipefail
+        # If a backup already exists, remove it.
+        if [ -d '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}_backup' ]; then
+          rm -rf '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}_backup'
+        fi
+        # If the current deploy dir exists, copy it into a backup.
+        if [ -d '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}' ]; then
+          cp -a '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}' \
+                '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}_backup'
+        fi
+        # Remove the current dir completely and recreate it empty.
+        rm -rf '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}' && \
+        mkdir -p '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+      "
+
+      # --- 2) Copy new contents from runner to remote server ---
+      if ! sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" scp -o StrictHostKeyChecking=no -rp \
+        "${SRC_ABS}/." root@"$SERVER":"${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}/"; then
+        echo "::error::SCP failed on $SERVER"
+        overall=1   # mark failure but continue with other servers
+        continue
+      fi
+
+      # --- 3) Verify on remote: list files after deployment ---
+      sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" ssh -o StrictHostKeyChecking=no root@"$SERVER" "
+        echo 'Remote contents for $SERVER at ${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}:'
+        ls -lah '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}' || true
+      "
+
+      echo "===== Done $SERVER ====="
+    done
+
+    # If any server failed (overall=1), exit with non-zero to mark job as failed.
+    exit $overall
+
+
+
+
+
+steps:
       - name: Get first server
         id: first
         shell: bash
