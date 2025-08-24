@@ -31,7 +31,9 @@
     # Hardening defaults for ssh/scp (avoid interactive prompts)
     SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
-              -o ConnectTimeout=10 -o ConnectionAttempts=3"
+              -o ConnectTimeout=10 -o ConnectionAttempts=3 \
+              -o PreferredAuthentications=password,keyboard-interactive \
+              -o PubkeyAuthentication=no
     # NOTE: auth is still via sshpass (password). If you can, prefer key auth.
 
     # Split SERVER_NAME by comma first; fallback to space-separated
