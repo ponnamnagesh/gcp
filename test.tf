@@ -1,3 +1,94 @@
+- name: Deploy (prod) to multiple servers with retries
+  if: ${{ inputs.ENV_NAME == 'prod' }}
+  shell: bash
+  run: |
+    set -euo pipefail
+    # Retry helper: retry <max_tries> <sleep_seconds> <cmd...>
+    retry() {
+      local tries="$1"; shift
+      local delay="$1"; shift
+      local n=1
+      while true; do
+        # shellcheck disable=SC2068
+        "$@" && return 0
+        exit_code=$?
+        if [ "$n" -ge "$tries" ]; then
+          echo "Retry: command failed after ${n}/${tries} tries (exit $exit_code)"
+          return "$exit_code"
+        fi
+        # Exponential backoff with small random jitter (0-300ms)
+        sleep_time=$(awk -v d="$delay" -v n="$n" 'BEGIN{s=d*2^(n-1);}END{printf "%.2f", s}')
+        jitter_ms=$((RANDOM % 300))
+        echo "Retry: attempt ${n}/${tries} failed (exit $exit_code). Sleeping ${sleep_time}s + ${jitter_ms}ms ..."
+        # sleep supports fractional seconds via bash builtin on Ubuntu
+        sleep "$sleep_time"
+        # jitter
+        perl -e "select(undef,undef,undef,$jitter_ms/1000)" 2>/dev/null || true
+        n=$((n+1))
+      done
+    }
+
+    # Hardening defaults for ssh/scp (avoid interactive prompts)
+    SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              -o ServerAliveInterval=15 -o ServerAliveCountMax=4 \
+              -o ConnectTimeout=10 -o ConnectionAttempts=3"
+    # NOTE: auth is still via sshpass (password). If you can, prefer key auth.
+
+    # Split SERVER_NAME by comma first; fallback to space-separated
+    IFS=',' read -ra SARR <<< "${{ vars.SERVER_NAME }}"
+    if [ ${#SARR[@]} -eq 1 ]; then read -ra SARR <<< "${{ vars.SERVER_NAME }}"; fi
+
+    SRC_ABS="${GITHUB_WORKSPACE}/${{ vars.PATH_TO_FILES }}"
+    test -d "${SRC_ABS}"
+
+    overall=0
+    for SERVER in "${SARR[@]}"; do
+      SERVER="$(echo "$SERVER" | xargs)"
+      [ -n "$SERVER" ] || continue
+
+      echo "===== Deploying to $SERVER ====="
+
+      # 1) Remote prep (backup + recreate target) with retry
+      retry 4 2 \
+        sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" \
+          ssh $SSH_OPTS root@"$SERVER" "
+            set -euo pipefail
+            if [ -d '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}_backup' ]; then
+              rm -rf '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}_backup'
+            fi
+            if [ -d '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}' ]; then
+              cp -a '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}' \
+                    '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}_backup'
+            fi
+            rm -rf '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+            mkdir -p '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+          " \
+      || { echo "::error::Remote prep failed on $SERVER"; overall=1; continue; }
+
+      # 2) Copy contents with retry (preserve perms/times)
+      retry 4 2 \
+        sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" \
+          scp $SSH_OPTS -rp \
+            "${SRC_ABS}/." root@"$SERVER":"${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}/" \
+      || { echo "::error::SCP failed on $SERVER"; overall=1; continue; }
+
+      # 3) Verify with retry (mostly for unreliable connections)
+      retry 3 2 \
+        sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" \
+          ssh $SSH_OPTS root@"$SERVER" "
+            echo 'Remote contents for $SERVER at ${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}:'
+            ls -lah '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}' || true
+          " \
+      || echo "::warning::Verification had issues on $SERVER"
+
+      echo "===== Done $SERVER ====="
+    done
+
+    exit $overall
+
+
+
+
 - name: Deploy (prod) to multiple servers
   if: ${{ inputs.ENV_NAME == 'prod' }}   # run this step only if ENV_NAME == prod
   shell: bash
