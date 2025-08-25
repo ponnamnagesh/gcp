@@ -5,8 +5,8 @@
       fail-fast: false
       max-parallel: 1
       matrix:
-        # Example: inputs.SERVER_NAME = "svm40bdc, svm4090sdc, svm4082sbc"
-        server: ${{ fromJSON(format('["{0}"]', join(split(vars.SERVER_NAME, ','), '","'))) }}
+        server: ${{ fromJSON(startsWith(vars.SERVER_NAME, '[') && vars.SERVER_NAME || format('["{0}"]', vars.SERVER_NAME)) }}
+
 
 
     steps:
