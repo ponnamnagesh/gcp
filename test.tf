@@ -1,3 +1,53 @@
+run: |
+  set -euo pipefail
+
+  retry() {
+    local tries="$1" delay="$2"; shift 2
+    local n=1
+    until "$@"; do
+      if (( n >= tries )); then return 1; fi
+      sleep "$delay"; n=$((n+1))
+    done
+  }
+
+  overall=0
+  IFS=',' read -ra SERVERS <<< "${{ vars.SERVER_NAME }}"
+
+  for raw in "${SERVERS[@]}"; do
+    SERVER="$(echo "$raw" | xargs)"   # trim spaces
+    [ -z "$SERVER" ] && continue
+
+    echo "===== Configuring environment on $SERVER ====="
+
+    if ! retry 4 10 \
+      sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" \
+      ssh -o StrictHostKeyChecking=no root@"$SERVER" "
+        set -euo pipefail
+        cd '/${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+        python -m venv venv
+        . venv/bin/activate
+        python -m pip install --upgrade pip
+        pip install --no-cache-dir setuptools==75.8.0 wheel==0.45.1 build==1.2.2.post1 bump2version==1.0.1 twine==5.1.1 -v -q \
+          -i https://${{ secrets.WPC_PRO_API_USER }}:${{ secrets.WPC_PRO_API_SECRET }}@${{ secrets.WPC_PRO_HOST }}/pypi/simple
+        pip install -r requirements/requirements.txt -v -q
+        chmod -R 775 '/${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+        chown -R '${{ vars.SERVICE_ACNT }}' '/${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+      "
+    then
+      echo "::error::Config failed on $SERVER"
+      overall=1; continue
+    fi
+
+    echo "Environment configured on $SERVER ✅"
+  done
+
+  if [ "$overall" -ne 0 ]; then
+    echo "::error::One or more servers failed environment configuration"
+    exit 1
+  fi
+
+
+
 retry 4 10 \
   sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" \
   ssh $SSH_OPTS root@"$SERVER" "
