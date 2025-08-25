@@ -1,4 +1,12 @@
-
+retry 4 10 \
+  sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" \
+  ssh $SSH_OPTS root@"$SERVER" "
+    set -euo pipefail
+    chmod -R 775 '/${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+    chown -R '${{ vars.SERVICE_ACNT }}' '/${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+    ls -lah '/${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+  " \
+  || { echo "::error::Post-copy perms/verify failed on $SERVER"; overall=1; continue; }
 
 retry 4 10 bash -c '
   echo "Running chmod and chown"
