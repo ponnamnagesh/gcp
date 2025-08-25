@@ -5,6 +5,7 @@
       fail-fast: false
       max-parallel: 1
       matrix:
+        # Example: inputs.SERVER_NAME = "svm40bdc, svm4090sdc, svm4082sbc"
         server: ${{ fromJSON('["' + join(split(inputs.SERVER_NAME, ','), '","') + '"]') }}
 
     steps:
@@ -29,5 +30,43 @@
         shell: bash
         run: |
           set -euo pipefail
-          echo "Configuring ${{ steps.normalize.outputs.server }} ..."
-          # Your sshpass + pip + chmod/chown block goes here
+
+          # retry <tries> <sleep> <cmd...>
+          retry() { local t="$1" s="$2"; shift 2; local n=1; until "$@"; do
+            (( n >= t )) && return 1; sleep "$s"; n=$((n+1))
+          done; }
+
+          SERVER='${{ steps.normalize.outputs.server }}'
+
+          # constants (inline; remove if you already export them globally)
+          DEST_PATH="/${{ inputs.DESTINATION_PATH != '' && inputs.DESTINATION_PATH || vars.DESTINATION_PATH }}/${{ inputs.PATH_TO_FILES != '' && inputs.PATH_TO_FILES || vars.PATH_TO_FILES }}"
+          WPC_INDEX="https://${{ secrets.WPC_PRO_API_USER }}:${{ secrets.WPC_PRO_API_SECRET }}@${{ secrets.WPC_PRO_HOST }}/pypi/simple"
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                    -o PreferredAuthentications=password,keyboard-interactive \
+                    -o PubkeyAuthentication=no -o GSSAPIAuthentication=no \
+                    -o NumberOfPasswordPrompts=1 -o ConnectTimeout=10"
+
+          echo "===== Configuring env on $SERVER ====="
+
+          retry 4 10 \
+          sshpass -p "${{ secrets.SAFEGUARD_SECRET }}" \
+          ssh $SSH_OPTS root@"$SERVER" "
+            set -euo pipefail
+            cd '${DEST_PATH}'
+
+            python -m venv venv
+            . venv/bin/activate
+            python -m pip install --upgrade pip
+
+            pip install --no-cache-dir setuptools==75.8.0 -v -q -i '${WPC_INDEX}'
+            pip install --no-cache-dir wheel==0.45.1        -v -q -i '${WPC_INDEX}'
+            pip install --no-cache-dir build==1.2.2.post1   -v -q -i '${WPC_INDEX}'
+            pip install --no-cache-dir bump2version==1.0.1  -v -q -i '${WPC_INDEX}'
+            pip install --no-cache-dir twine==5.1.1         -v -q -i '${WPC_INDEX}'
+            pip install -r requirements/requirements.txt    -v -q -i '${WPC_INDEX}'
+
+            chmod -R 775 '${DEST_PATH}'
+            chown -R '${{ vars.SERVICE_ACNT }}' '${DEST_PATH}'
+          "
+
+          echo "Environment configured on $SERVER ✅"
