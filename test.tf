@@ -1,3 +1,16 @@
+
+
+retry 4 10 bash -c '
+  echo "Running chmod and chown"
+  sshpass -p "'"${{ secrets.SAFEGUARD_SECRET }}"'" \
+  ssh $SSH_OPTS root@"$SERVER" "
+    set -euo pipefail
+    chmod -R 775 '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+    chown -R '${{ vars.SERVICE_ACNT }}' '${{ vars.DESTINATION_PATH }}/${{ vars.PATH_TO_FILES }}'
+  "
+'
+
+
 - name: Deploy (prod) to multiple servers with retries
   if: ${{ inputs.ENV_NAME == 'prod' }}
   shell: bash
