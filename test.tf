@@ -6,7 +6,8 @@
       max-parallel: 1
       matrix:
         # Example: inputs.SERVER_NAME = "svm40bdc, svm4090sdc, svm4082sbc"
-        server: ${{ fromJSON('["' + join(split(inputs.SERVER_NAME, ','), '","') + '"]') }}
+        server: ${{ fromJSON(format('["{0}"]', join(split(vars.SERVER_NAME, ','), '","'))) }}
+
 
     steps:
       - name: Normalize server value
