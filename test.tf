@@ -44,7 +44,7 @@ cd-workflow-pro-attempt2:
   secrets: inherit
   continue-on-error: true
 
-# --- Attempt 3 (final; fails the workflow if still not successful) ---
+# --- Attempt 3 (final; fail workflow if still not successful) ---
 cd-workflow-pro-attempt3:
   name: CD - Workflow for Prod Deployments (try 3)
   if: ${{ github.event_name == 'workflow_dispatch'
@@ -66,4 +66,4 @@ cd-workflow-pro-attempt3:
     SAFEGUARD_URL: "${{ vars.SAFEGUARD_URL }}"
     SERVICE_ACNT: "${{ vars.SERVICE_ACNT }}"
   secrets: inherit
-  # no continue-on-error here → the workflow fails if try 3 also fails
+  # no continue-on-error here → if try 3 fails, the workflow fails
