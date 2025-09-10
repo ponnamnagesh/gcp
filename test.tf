@@ -2,6 +2,7 @@ cd-workflow-pro:
   name: CD - Workflow for Prod Deployments
   if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.envname == 'sandbox' }}
   needs: validate-cd-user
+  runs-on: ubuntu-latest   # REQUIRED for steps-based jobs
   strategy:
     fail-fast: false
     max-parallel: 1
@@ -11,8 +12,6 @@ cd-workflow-pro:
   steps:
     - name: Retry Deploy for ${{ matrix.server }}
       shell: bash
-      env:
-        GH_TOKEN: ${{ github.token }}
       run: |
         set -euo pipefail
         max_attempts=3
