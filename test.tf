@@ -18,14 +18,14 @@ cd-workflow-pro-attempt1:
     SAFEGUARD_URL: "${{ vars.SAFEGUARD_URL }}"
     SERVICE_ACNT: "${{ vars.SERVICE_ACNT }}"
   secrets: inherit
-  continue-on-error: true
 
-# --- Attempt 2 (only if attempt 1 failed) ---
+# --- Attempt 2 (runs only if attempt 1 did NOT succeed) ---
 cd-workflow-pro-attempt2:
   name: CD - Workflow for Prod Deployments (try 2)
-  if: ${{ github.event_name == 'workflow_dispatch'
-          && github.event.inputs.envname == 'sandbox'
-          && needs.cd-workflow-pro-attempt1.result != 'success' }}
+  if: ${{ always()
+        && github.event_name == 'workflow_dispatch'
+        && github.event.inputs.envname == 'sandbox'
+        && needs.cd-workflow-pro-attempt1.result != 'success' }}
   needs: [validate-cd-user, cd-workflow-pro-attempt1]
   uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python-scp-deploy.yml@pipeline-shared-testprodserver-deploy
   strategy:
@@ -42,14 +42,14 @@ cd-workflow-pro-attempt2:
     SAFEGUARD_URL: "${{ vars.SAFEGUARD_URL }}"
     SERVICE_ACNT: "${{ vars.SERVICE_ACNT }}"
   secrets: inherit
-  continue-on-error: true
 
-# --- Attempt 3 (final; fail workflow if still not successful) ---
+# --- Attempt 3 (final; runs only if attempt 2 did NOT succeed) ---
 cd-workflow-pro-attempt3:
   name: CD - Workflow for Prod Deployments (try 3)
-  if: ${{ github.event_name == 'workflow_dispatch'
-          && github.event.inputs.envname == 'sandbox'
-          && needs.cd-workflow-pro-attempt2.result != 'success' }}
+  if: ${{ always()
+        && github.event_name == 'workflow_dispatch'
+        && github.event.inputs.envname == 'sandbox'
+        && needs.cd-workflow-pro-attempt2.result != 'success' }}
   needs: [validate-cd-user, cd-workflow-pro-attempt2]
   uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python-scp-deploy.yml@pipeline-shared-testprodserver-deploy
   strategy:
@@ -66,4 +66,4 @@ cd-workflow-pro-attempt3:
     SAFEGUARD_URL: "${{ vars.SAFEGUARD_URL }}"
     SERVICE_ACNT: "${{ vars.SERVICE_ACNT }}"
   secrets: inherit
-  # no continue-on-error here → if try 3 fails, the workflow fails
+  # (no continue-on-error here; if this one fails, the whole workflow fails)
