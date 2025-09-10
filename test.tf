@@ -1,48 +1,69 @@
-cd-workflow-pro:
-  name: CD - Workflow for Prod Deployments
+# --- Attempt 1 ---
+cd-workflow-pro-attempt1:
+  name: CD - Workflow for Prod Deployments (try 1)
   if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.envname == 'sandbox' }}
   needs: validate-cd-user
-  runs-on: ubuntu-latest   # REQUIRED for steps-based jobs
+  uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python-scp-deploy.yml@pipeline-shared-testprodserver-deploy
   strategy:
     fail-fast: false
     max-parallel: 1
     matrix:
       server: [ SVM4090BDV, SVM4091BDV ]
+  with:
+    SERVER_NAME: "${{ matrix.server }}"
+    PATH_TO_FILES: "${{ vars.PATH_TO_FILES }}"
+    DESTINATION_PATH: "${{ vars.DESTINATION_PATH }}"
+    RELEASE_VERSION: "${{ github.event.inputs.RELEASE_VERSION }}"
+    ENV_NAME: "${{ github.event.inputs.envname }}"
+    SAFEGUARD_URL: "${{ vars.SAFEGUARD_URL }}"
+    SERVICE_ACNT: "${{ vars.SERVICE_ACNT }}"
+  secrets: inherit
+  continue-on-error: true
 
-  steps:
-    - name: Retry Deploy for ${{ matrix.server }}
-      shell: bash
-      run: |
-        set -euo pipefail
-        max_attempts=3
-        wait_secs=60
-        attempt=1
+# --- Attempt 2 (only if attempt 1 failed) ---
+cd-workflow-pro-attempt2:
+  name: CD - Workflow for Prod Deployments (try 2)
+  if: ${{ github.event_name == 'workflow_dispatch'
+          && github.event.inputs.envname == 'sandbox'
+          && needs.cd-workflow-pro-attempt1.result != 'success' }}
+  needs: [validate-cd-user, cd-workflow-pro-attempt1]
+  uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python-scp-deploy.yml@pipeline-shared-testprodserver-deploy
+  strategy:
+    fail-fast: false
+    max-parallel: 1
+    matrix:
+      server: [ SVM4090BDV, SVM4091BDV ]
+  with:
+    SERVER_NAME: "${{ matrix.server }}"
+    PATH_TO_FILES: "${{ vars.PATH_TO_FILES }}"
+    DESTINATION_PATH: "${{ vars.DESTINATION_PATH }}"
+    RELEASE_VERSION: "${{ github.event.inputs.RELEASE_VERSION }}"
+    ENV_NAME: "${{ github.event.inputs.envname }}"
+    SAFEGUARD_URL: "${{ vars.SAFEGUARD_URL }}"
+    SERVICE_ACNT: "${{ vars.SERVICE_ACNT }}"
+  secrets: inherit
+  continue-on-error: true
 
-        until [ "$attempt" -gt "$max_attempts" ]; do
-          echo "🚀 Attempt ${attempt} for ${{ matrix.server }}"
-
-          gh workflow run .github/workflows/cd-python-scp-deploy.yml \
-            --ref pipeline-shared-testprodserver-deploy \
-            -f SERVER_NAME="${{ matrix.server }}" \
-            -f PATH_TO_FILES="${{ vars.PATH_TO_FILES }}" \
-            -f DESTINATION_PATH="${{ vars.DESTINATION_PATH }}" \
-            -f RELEASE_VERSION="${{ github.event.inputs.RELEASE_VERSION }}" \
-            -f ENV_NAME="${{ github.event.inputs.envname }}" \
-            -f SAFEGUARD_URL="${{ vars.SAFEGUARD_URL }}" \
-            -f SERVICE_ACNT="${{ vars.SERVICE_ACNT }}"
-
-          echo "⏳ Waiting for the triggered run to complete…"
-          if gh run watch --exit-status --workflow cd-python-scp-deploy.yml; then
-            echo "✅ Deployment succeeded on attempt ${attempt} for ${{ matrix.server }}"
-            exit 0
-          fi
-
-          if [ "$attempt" -eq "$max_attempts" ]; then
-            echo "❌ Deployment failed after ${max_attempts} attempts for ${{ matrix.server }}"
-            exit 1
-          fi
-
-          echo "⚠️ Attempt ${attempt} failed. Retrying in ${wait_secs}s…"
-          attempt=$((attempt+1))
-          sleep "${wait_secs}"
-        done
+# --- Attempt 3 (final; fails the workflow if still not successful) ---
+cd-workflow-pro-attempt3:
+  name: CD - Workflow for Prod Deployments (try 3)
+  if: ${{ github.event_name == 'workflow_dispatch'
+          && github.event.inputs.envname == 'sandbox'
+          && needs.cd-workflow-pro-attempt2.result != 'success' }}
+  needs: [validate-cd-user, cd-workflow-pro-attempt2]
+  uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python-scp-deploy.yml@pipeline-shared-testprodserver-deploy
+  strategy:
+    fail-fast: false
+    max-parallel: 1
+    matrix:
+      server: [ SVM4090BDV, SVM4091BDV ]
+  with:
+    SERVER_NAME: "${{ matrix.server }}"
+    PATH_TO_FILES: "${{ vars.PATH_TO_FILES }}"
+    DESTINATION_PATH: "${{ vars.DESTINATION_PATH }}"
+    RELEASE_VERSION: "${{ github.event.inputs.RELEASE_VERSION }}"
+    ENV_NAME: "${{ github.event.inputs.envname }}"
+    SAFEGUARD_URL: "${{ vars.SAFEGUARD_URL }}"
+    SERVICE_ACNT: "${{ vars.SERVICE_ACNT }}"
+  secrets: inherit
+  # no continue-on-error here → the workflow fails if try 3 also fails
