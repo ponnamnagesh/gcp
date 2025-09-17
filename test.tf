@@ -1,12 +1,14 @@
 cd-workflow-non-prod:
   name: CD - Workflow for Prod Deployments
   needs: validate-cd-user
+  if: github.event_name == 'workflow_dispatch' && inputs.envname == 'sandbox'
+  environment: ${{ inputs.envname }}
   strategy:
     fail-fast: false
     max-parallel: 1
     matrix:
-      server: ${{ fromJSON(format('["{0}"]', join(env.SERVER_NAME, '","'))) }}
-  uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python.yml
+      server: ${{ fromJSON(vars.SERVER_NAME) }}
+  uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python-scp-deploy.yml@main
   with:
     SERVER_NAME: ${{ matrix.server }}
     PATH_TO_FILES: ${{ vars.PATH_TO_FILES }}
