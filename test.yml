@@ -3,3 +3,8 @@
  "qa":["QA1","QA2"],
  "uat":["UAT1","UAT2"],
  "prod":["PROD1","PROD2"]}
+
+
+ matrix:
+  server: ${{ fromJSON(vars.SERVERS_MAP)[inputs.envname] }}
+
