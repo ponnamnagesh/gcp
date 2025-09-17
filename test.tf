@@ -24,3 +24,11 @@ jobs:
       SAFEGUARD_URL: ${{ vars.SAFEGUARD_URL }}
       SERVICE_ACNT: ${{ vars.SERVICE_ACNT }}
     secrets: inherit
+
+
+# show line numbers and TABs (^I) so you can see exactly where the problem is
+sed -n '1,200p' .github/workflows/cd.yml | nl -ba | sed $'s/\t/^I/g'
+
+# if you see any ^I, convert all tabs to 2 spaces into a new file
+expand -t2 -i .github/workflows/cd.yml > .github/workflows/cd.yml.fixed
+mv .github/workflows/cd.yml.fixed .github/workflows/cd.yml
