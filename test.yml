@@ -29,15 +29,15 @@ jobs:
     secrets: inherit
 
   cd-workflow-deploy:
-    name: CD - Workflow for Prod Deployments
+    name: CD - Workflow for Deployments
     needs: validate-cd-user
     if: github.event_name == 'workflow_dispatch'
-    environment: ${{ inputs.envname }}                # pulls vars/secrets from selected Environment
+    environment: ${{ inputs.envname }}
     strategy:
       fail-fast: false
       max-parallel: 1
       matrix:
-        server: ${{ fromJSON(vars.ENV_SERVER_NAME) }} # e.g. ["SVM4090BDV","SVM4091BDV"]
+        server: ${{ fromJSON(vars.ENV_SERVER_NAME) }}
     uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python-scp-deploy.yml@main
     with:
       SERVER_NAME: ${{ matrix.server }}
