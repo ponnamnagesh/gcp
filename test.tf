@@ -1,34 +1,20 @@
-jobs:
-  validate-cd-user:
-    name: CD - Validate User
-    uses: charlesschwab/samda-action-workflows/.github/workflows/cd-common-validate-user.yml@main
-    secrets: inherit
-
-  cd-workflow-non-prod:
-    name: CD - Workflow for Prod Deployments
-    needs: validate-cd-user
-    if: github.event_name == 'workflow_dispatch'
-    environment: ${{ inputs.envname }}
-    strategy:
-      fail-fast: false
-      max-parallel: 1
-      matrix:
-        server: ${{ fromJSON(vars.SERVER_NAME) }}
-    uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python-scp-deploy.yml@main
-    with:
-      SERVER_NAME: ${{ matrix.server }}
-      PATH_TO_FILES: ${{ vars.PATH_TO_FILES }}
-      DESTINATION_PATH: ${{ vars.DESTINATION_PATH }}
-      RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
-      ENV_NAME: ${{ inputs.envname }}
-      SAFEGUARD_URL: ${{ vars.SAFEGUARD_URL }}
-      SERVICE_ACNT: ${{ vars.SERVICE_ACNT }}
-    secrets: inherit
-
-
-# show line numbers and TABs (^I) so you can see exactly where the problem is
-sed -n '1,200p' .github/workflows/cd.yml | nl -ba | sed $'s/\t/^I/g'
-
-# if you see any ^I, convert all tabs to 2 spaces into a new file
-expand -t2 -i .github/workflows/cd.yml > .github/workflows/cd.yml.fixed
-mv .github/workflows/cd.yml.fixed .github/workflows/cd.yml
+cd-workflow-prod:
+  name: CD - Workflow for Prod Deployments
+  needs: validate-cd-user
+  if: github.event_name == 'workflow_dispatch'
+  environment: ${{ inputs.envname }}
+  strategy:
+    fail-fast: false
+    max-parallel: 1
+    matrix:
+      server: ${{ fromJSON(vars.ENV_SERVER_NAME) }}
+  uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python-scp-deploy.yml@main
+  with:
+    SERVER_NAME: ${{ matrix.server }}
+    PATH_TO_FILES: ${{ vars.PATH_TO_FILES }}
+    DESTINATION_PATH: ${{ vars.DESTINATION_PATH }}
+    RELEASE_VERSION: ${{ inputs.RELEASE_VERSION }}
+    ENV_NAME: ${{ inputs.envname }}
+    SAFEGUARD_URL: ${{ vars.SAFEGUARD_URL }}
+    SERVICE_ACNT: ${{ vars.SERVICE_ACNT }}
+  secrets: inherit
