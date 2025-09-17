@@ -5,7 +5,7 @@ cd-workflow-non-prod:
     fail-fast: false
     max-parallel: 1
     matrix:
-      server: ${{ split(env.SERVER_NAME, ',') }}
+      server: ${{ fromJSON(format('["{0}"]', join(env.SERVER_NAME, '","'))) }}
   uses: charlesschwab/samda-action-workflows/.github/workflows/cd-python.yml
   with:
     SERVER_NAME: ${{ matrix.server }}
