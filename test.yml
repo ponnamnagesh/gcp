@@ -1,10 +1,28 @@
-{"sandbox":["SVM4090BDV","SVM4091BDV"],
- "dev":["DEV1","DEV2"],
- "qa":["QA1","QA2"],
- "uat":["UAT1","UAT2"],
- "prod":["PROD1","PROD2"]}
+# -----------------------------------------------------------
+# Inject version from .bumpversion.cfg into pyproject.toml
+# Only runs when:
+#   1. build_options includes "publish"
+#   2. pyproject.toml exists
+#   3. .bumpversion.cfg exists
+# -----------------------------------------------------------
+- name: Inject version from .bumpversion.cfg (only when publishing)
+  if: ${{ contains(inputs.build_options, 'publish') 
+        && hashFiles('pyproject.toml') != '' 
+        && hashFiles('.bumpversion.cfg') != '' }}
+  shell: bash
+  run: |
+    set -euo pipefail
 
+    # Extract version value from .bumpversion.cfg
+    # e.g. current_version = 1.2.3  →  VERSION=1.2.3
+    VERSION=$(awk -F'= *' '/^\s*current_version/ {print $2}' .bumpversion.cfg | tr -d '[:space:]')
+    echo "📦 Using version from .bumpversion.cfg: $VERSION"
 
- matrix:
-  server: ${{ fromJSON(vars.SERVERS_MAP)[inputs.envname] }}
-
+    # Update version line in pyproject.toml (PEP 621 format)
+    # Replaces: version = "old" → version = "1.2.3"
+    if [[ -f pyproject.toml ]]; then
+      sed -i -E "s/^\s*version\s*=\s*\".*\"/version = \"${VERSION}\"/" pyproject.toml
+      echo "✅ pyproject.toml updated with version ${VERSION}"
+    else
+      echo "⚠️ pyproject.toml not found, skipping version update."
+    fi
