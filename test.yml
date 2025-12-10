@@ -1,28 +1,17 @@
-# -----------------------------------------------------------
-# Inject version from .bumpversion.cfg into pyproject.toml
-# Only runs when:
-#   1. build_options includes "publish"
-#   2. pyproject.toml exists
-#   3. .bumpversion.cfg exists
-# -----------------------------------------------------------
-- name: Inject version from .bumpversion.cfg (only when publishing)
-  if: ${{ contains(inputs.build_options, 'publish') 
-        && hashFiles('pyproject.toml') != '' 
-        && hashFiles('.bumpversion.cfg') != '' }}
-  shell: bash
-  run: |
-    set -euo pipefail
+Switch traffic to SECONDARY (100.127.60.130)
+gcloud dns record-sets update \
+  cs-samda-ad00008265-uat.privatelink.snowflakecomputing.com. \
+  --zone=dnsz-snowflake-dns-uat-cs-samda-ad00008265-uat2388 \
+  --project=cs-samda-ad00008265-uat2388 \
+  --type=A \
+  --routing-policy-type=WRR \
+  --routing-policy-data="0.0.0.0=100.127.60.2:0,0.0.0.0=100.127.60.130:1"
 
-    # Extract version value from .bumpversion.cfg
-    # e.g. current_version = 1.2.3  →  VERSION=1.2.3
-    VERSION=$(awk -F'= *' '/^\s*current_version/ {print $2}' .bumpversion.cfg | tr -d '[:space:]')
-    echo "📦 Using version from .bumpversion.cfg: $VERSION"
-
-    # Update version line in pyproject.toml (PEP 621 format)
-    # Replaces: version = "old" → version = "1.2.3"
-    if [[ -f pyproject.toml ]]; then
-      sed -i -E "s/^\s*version\s*=\s*\".*\"/version = \"${VERSION}\"/" pyproject.toml
-      echo "✅ pyproject.toml updated with version ${VERSION}"
-    else
-      echo "⚠️ pyproject.toml not found, skipping version update."
-    fi
+Switch back to PRIMARY (100.127.60.2)
+gcloud dns record-sets update \
+  cs-samda-ad00008265-uat.privatelink.snowflakecomputing.com. \
+  --zone=dnsz-snowflake-dns-uat-cs-samda-ad00008265-uat2388 \
+  --project=cs-samda-ad00008265-uat2388 \
+  --type=A \
+  --routing-policy-type=WRR \
+  --routing-policy-data="0.0.0.0=100.127.60.2:1,0.0.0.0=100.127.60.130:0"
