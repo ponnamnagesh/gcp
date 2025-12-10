@@ -1,17 +1,1 @@
-Switch traffic to SECONDARY (100.127.60.130)
-gcloud dns record-sets update \
-  cs-samda-ad00008265-uat.privatelink.snowflakecomputing.com. \
-  --zone=dnsz-snowflake-dns-uat-cs-samda-ad00008265-uat2388 \
-  --project=cs-samda-ad00008265-uat2388 \
-  --type=A \
-  --routing-policy-type=WRR \
-  --routing-policy-data="0.0.0.0=100.127.60.2:0,0.0.0.0=100.127.60.130:1"
 
-Switch back to PRIMARY (100.127.60.2)
-gcloud dns record-sets update \
-  cs-samda-ad00008265-uat.privatelink.snowflakecomputing.com. \
-  --zone=dnsz-snowflake-dns-uat-cs-samda-ad00008265-uat2388 \
-  --project=cs-samda-ad00008265-uat2388 \
-  --type=A \
-  --routing-policy-type=WRR \
-  --routing-policy-data="0.0.0.0=100.127.60.2:1,0.0.0.0=100.127.60.130:0"
