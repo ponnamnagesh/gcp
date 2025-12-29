@@ -1,0 +1,332 @@
+# Cloud Composer Module Upgrade – Step-by-Step Documentation
+
+## Overview
+
+This document captures the **exact steps followed to upgrade the Cloud Composer module**, including dependencies, issues encountered, mitigation steps, and post-upgrade validation. The goal is to provide a **repeatable and auditable upgrade runbook** for future Composer upgrades.
+
+---
+
+## Initial State
+
+* Existing **Cloud Composer 2 environment** managed via Terraform
+* Composer VPC was **shared / referenced** by:
+
+  * Private Service Connect (PSC)
+  * Cloud DNS resources
+* Composer upgrade required **environment recreation**
+
+---
+
+## Step 1: Snapshot the Existing Composer Environment (Pre-upgrade)
+
+Before making any changes, a snapshot of the existing Composer environment was taken to preserve:
+
+* DAGs
+* Airflow Variables
+* Connections
+* Pools
+* Plugins
+* PyPI packages
+
+**Action:**
+
+* Snapshot was saved to the **Composer GCS bucket** using the Environment Service Account (ESA)
+
+**Reason:**
+
+* Composer upgrades may require destroy/recreate
+* Snapshot ensures full Airflow state recovery
+
+---
+
+## Step 2: Update Composer Module Code
+
+* Updated Terraform code to the **new Composer module version**
+* Module upgrade introduced changes that required **recreating the Composer environment**
+
+---
+
+## Step 3: Dependency Issue Identified (PSC & DNS)
+
+### Problem
+
+Terraform was **unable to destroy the existing Composer environment** due to dependencies:
+
+* Private Service Connect (PSC)
+* Cloud DNS resources
+
+These resources were:
+
+* Using the **Composer VPC**
+* Still referenced while Terraform attempted to destroy Composer
+
+Result:
+
+* Terraform destroy failed due to active network dependencies
+
+---
+
+## Step 4: Temporary Code Change – Comment PSC & DNS
+
+### Mitigation Strategy
+
+To unblock Composer destruction:
+
+1. **Commented out** the following resources in Terraform:
+
+   * Private Service Connect (PSC)
+   * Cloud DNS resources referencing Composer VPC
+
+2. Applied Terraform changes
+
+**Outcome:**
+
+* PSC and DNS resources were removed
+* Composer VPC dependencies cleared
+
+---
+
+## Step 5: Destroy and Recreate Composer Environment
+
+* Terraform was re-applied with PSC/DNS commented
+* Composer environment was successfully **destroyed**
+* New Composer environment was **created** using the upgraded module version
+
+---
+
+## Step 6: Restore Snapshot into New Composer Environment
+
+### Snapshot Restore Method
+
+* Snapshot was restored **manually via Composer UI**
+* Snapshot source: **Composer snapshot GCS bucket**
+
+**Restored Components:**
+
+* DAGs
+* Variables
+* Connections
+* Pools
+* Plugins
+
+---
+
+## Step 7: Re-enable PSC & DNS Resources
+
+* Uncommented PSC and DNS resources in Terraform code
+* Re-applied Terraform
+
+**Outcome:**
+
+* PSC recreated successfully
+* DNS records recreated successfully
+* Composer VPC dependencies restored
+
+---
+
+## Step 8: Post-upgrade Validation
+
+### Functional Testing
+
+* Verified Airflow UI accessibility
+* Triggered DAGs manually
+* Validated:
+
+  * DAG execution
+  * Variables availability
+  * Connections
+  * External integrations
+
+
+---
+
+## Lessons Learned / Best Practices
+
+* Always **take a Composer snapshot before upgrades**
+* Identify **network-level dependencies** (PSC, DNS, VPC attachments) early
+* Temporarily commenting dependent resources can be safer than forced deletes
+* Snapshot restore via UI is reliable post-recreation
+* Validate Airflow variables explicitly after restore
+
+---
+
+## Finalized Enterprise-Safe Upgrade Strategy (QA / UAT / Prod)
+
+### Key Objective
+
+Upgrade Cloud Composer **without multiple PRs**, **without modifying enterprise modules**, and **without manual comment/uncomment**, while safely handling PSC and DNS dependencies.
+
+---
+
+## Core Design Principle
+
+* **One PR** introduces a reusable upgrade toggle
+* **Two Terraform applies** are operationally required (dependency graph reality)
+* PSC and DNS are conditionally disabled **only during upgrade**
+* Composer enterprise module remains untouched
+
+---
+
+## Upgrade Toggle Design
+
+### Variable (root module only)
+
+```hcl
+variable "composer_upgrade_mode" {
+  description = "Temporarily disable PSC and DNS during Composer upgrade"
+  type        = bool
+  default     = false
+}
+```
+
+---
+
+## Conditional Gating of Dependent Modules
+
+### Private Service Connect (PSC)
+
+```hcl
+module "psc_consumer_endpoint_us_central1" {
+  count = (
+    var.composer_upgrade_mode
+    || contains(tolist(["prototype"]), module.project_ref.data.environment_type)
+  ) ? 0 : 1
+
+  source        = "git::https://bitbucket.schwab.com/scm/gcp/terraform-google-schwab-network//modules/private-service-connect"
+  project_ref   = module.project_ref
+  network_id    = module.cloud_composer_project_setup.composer_vpc.network_self_link
+  subnetwork_id = module.cloud_composer_project_setup.composer_psc_subnet.us-central1.self_link
+  region        = "us-central1"
+  workload      = "psc"
+}
+```
+
+### Cloud DNS (PSC-dependent)
+
+```hcl
+module "dr_snowflake_dns_zone_psc" {
+  count = var.composer_upgrade_mode ? 0 : 1
+
+  source      = "git::https://bitbucket.schwab.com/scm/gcp/terraform-google-schwab-cloud-dns//modules/..."
+  project_ref = module.project_ref
+  network_id  = module.cloud_composer_project_setup.composer_vpc.network_self_link
+}
+```
+
+```hcl
+module "dr_Privatelink_host_dns_a_record_ocsp" {
+  count = var.composer_upgrade_mode ? 0 : 1
+
+  source      = "git::https://bitbucket.schwab.com/scm/gcp/terraform-google-schwab-cloud-dns//modules/..."
+  project_ref = module.project_ref
+  zone_ref    = module.dr_snowflake_dns_zone_psc[0].private_zone
+  rrdatas     = [module.psc_consumer_endpoint_us_central1[0].compute_address]
+}
+```
+
+---
+
+## QA / Prod Upgrade Execution Flow (ONE PR)
+
+### Step 1: Pre-upgrade Snapshot
+
+* Take Composer snapshot
+* Store in Composer GCS bucket
+
+---
+
+### Step 2: Enable Upgrade Mode (Apply #1)
+
+Set **once** via tfvars **or** Terraform Enterprise workspace variable:
+
+```hcl
+composer_upgrade_mode = true
+```
+
+Apply:
+
+```bash
+terraform apply
+```
+
+**Result:**
+
+* PSC removed
+* DNS removed
+* Composer destroy/recreate succeeds
+
+---
+
+### Step 3: Restore Snapshot
+
+* Restore snapshot via Composer UI
+* Validate:
+
+  * DAGs
+  * Variables
+  * Connections
+
+---
+
+### Step 4: Disable Upgrade Mode (Apply #2)
+
+```hcl
+composer_upgrade_mode = false
+```
+
+Apply:
+
+```bash
+terraform apply
+```
+
+**Result:**
+
+* PSC recreated
+* DNS recreated
+* Full connectivity restored
+
+---
+
+## Why Two Applies Are Required (But Only One PR)
+
+Terraform cannot destroy a resource (Composer VPC) while it is still referenced by PSC/DNS. The dependency graph requires:
+
+1. Removal of dependents
+2. Destruction and recreation of Composer
+3. Reattachment of dependents
+
+This is a **state transition**, not a code change — hence **one PR is sufficient**.
+
+---
+
+## Operational Best Practices
+
+* Use **Terraform Enterprise workspace variables** to avoid tfvars edits
+* Reuse the same toggle for **Prod upgrades**
+* Keep snapshot restore as a manual checkpoint
+
+---
+
+## Final Status
+
+* ✅ Enterprise modules untouched
+* ✅ Single PR
+* ✅ Clean QA/Prod rollout
+* ✅ Repeatable and auditable
+
+---
+
+## Approved Upgrade Runbook (Final)
+
+1. Take Composer snapshot
+2. Enable `composer_upgrade_mode`
+3. Apply Terraform (destroy/recreate)
+4. Restore snapshot
+5. Disable `composer_upgrade_mode`
+6. Apply Terraform
+7. Test DAGs
+
+---
+
+
