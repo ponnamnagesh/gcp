@@ -1,8 +1,1 @@
-| Environment             | Developers Group                              | Viewers Group                              | Support Group                              |
-| ----------------------- | --------------------------------------------- | ------------------------------------------ | ------------------------------------------ |
-| **Sandbox (Prototype)** | `app_gcp_samda_sandbox_developers@schwab.com` | `app_gcp_samda_sandbox_viewers@schwab.com` | —                                          |
-| **Sandbox (Dev)**       | `app_gcp_samda_sandbox_developers@schwab.com` | `app_gcp_samda_sandbox_viewers@schwab.com` | —                                          |
-| **QA**                  | —                                             | `app_gcp_samda_nonprod_viewers@schwab.com` | `app_gcp_samda_nonprod_support@schwab.com` |
-| **UAT**                 | —                                             | `app_gcp_samda_nonprod_viewers@schwab.com` | `app_gcp_samda_nonprod_support@schwab.com` |
-| **Production**          | —                                             | `app_gcp_samda_prod_viewers@schwab.com`    | `app_gcp_samda_prod_support@schwab.com`    |
 
